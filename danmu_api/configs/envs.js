@@ -3,12 +3,14 @@
  * 提供获取和设置环境变量的函数，支持 Cloudflare Workers 和 Node.js
  */
 export class Envs {
+  static env;
+
   // 记录获取过的环境变量
   static accessedEnvVars = new Map();
 
   static VOD_ALLOWED_PLATFORMS = ['qiyi', 'bilibili1', 'imgo', 'youku', 'qq']; // vod允许的播放平台
   static ALLOWED_PLATFORMS = ['qiyi', 'bilibili1', 'imgo', 'youku', 'qq', 'renren', 'hanjutv', 'bahamut']; // 全部源允许的播放平台
-  static ALLOWED_SOURCES = ['360', 'vod', 'tencent', 'youku', 'iqiyi', 'imgo', 'bilibili', 'renren', 'hanjutv', 'bahamut']; // 允许的源
+  static ALLOWED_SOURCES = ['360', 'vod', 'tmdb', 'douban', 'tencent', 'youku', 'iqiyi', 'imgo', 'bilibili', 'renren', 'hanjutv', 'bahamut']; // 允许的源
 
   /**
    * 获取环境变量
@@ -19,10 +21,10 @@ export class Envs {
    */
   static get(key, defaultValue, type = 'string', encrypt = false) {
     let value;
-    if (typeof env !== 'undefined' && env[key]) {
-      value = env[key]; // Cloudflare Workers
+    if (typeof this.env !== 'undefined' && this.env[key]) {
+      value = this.env[key];
     } else if (typeof process !== 'undefined' && process.env?.[key]) {
-      value = process.env[key]; // Node.js
+      value = process.env[key];
     } else {
       value = defaultValue;
     }
@@ -36,7 +38,7 @@ export class Envs {
         }
         break;
       case 'boolean':
-        parsedValue = value === 'true' || value === '1';
+        parsedValue = value === true || value === 'true'|| value === 1 || value === '1';
         break;
       case 'string':
       default:
@@ -176,6 +178,7 @@ export class Envs {
    * @returns {Object} 配置对象
    */
   static load(env = {}, deployPlatform = 'node') {
+    this.env = env;
     return {
       vodAllowedPlatforms: this.VOD_ALLOWED_PLATFORMS,
       allowedPlatforms: this.ALLOWED_PLATFORMS,
@@ -191,7 +194,8 @@ export class Envs {
       episodeTitleFilter: this.resolveEpisodeTitleFilter(env), // 剧集标题正则过滤
       blockedWords: this.get('BLOCKED_WORDS', '', 'string'), // 屏蔽词列表
       groupMinute: Math.min(this.get('GROUP_MINUTE', 1, 'number'), 30), // 分钟内合并去重（默认 1，最大值30，0表示不去重）
-      proxyUrl: this.get('PROXY_URL', '', 'string'), // 代理地址
+      proxyUrl: this.get('PROXY_URL', '', 'string', true), // 代理/反代地址
+      danmuSimplified: this.get('DANMU_SIMPLIFIED', true, 'boolean'), // 弹幕繁体转简体开关
       tmdbApiKey: this.get('TMDB_API_KEY', '', 'string', true), // TMDB API KEY
       redisUrl: this.get('UPSTASH_REDIS_REST_URL', '', 'string', true), // upstash redis url
       redisToken: this.get('UPSTASH_REDIS_REST_TOKEN', '', 'string', true), // upstash redis url
@@ -203,7 +207,9 @@ export class Envs {
       convertTopBottomToScroll: this.get('CONVERT_TOP_BOTTOM_TO_SCROLL', false, 'boolean'), // 顶部/底部弹幕转换为浮动弹幕配置（默认 false，禁用转换）
       convertColorToWhite: this.get('CONVERT_COLOR_TO_WHITE', false, 'boolean'), // 彩色弹幕转换为纯白弹幕配置（默认 false，禁用转换）
       danmuOutputFormat: this.get('DANMU_OUTPUT_FORMAT', 'json', 'string'), // 弹幕输出格式配置（默认 json，可选值：json, xml）
-      strictTitleMatch: this.get('STRICT_TITLE_MATCH', false, 'boolean') // 严格标题匹配模式配置（默认 false，宽松模糊匹配）
+      strictTitleMatch: this.get('STRICT_TITLE_MATCH', false, 'boolean'), // 严格标题匹配模式配置（默认 false，宽松模糊匹配）
+      rememberLastSelect: this.get('REMEMBER_LAST_SELECT', true, 'boolean'), // 是否记住手动选择结果，用于match自动匹配时优选上次的选择（默认 true，记住）
+      MAX_LAST_SELECT_MAP: this.get('MAX_LAST_SELECT_MAP', 100, 'number'), // 记住上次选择映射缓存大小限制（默认 100）
     };
   }
 }
